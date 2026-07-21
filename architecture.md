@@ -96,9 +96,27 @@ On x86-64 CPUs with AVX2 support, NQV loads **8 independent counter blocks (256 
 - Cross-lane vector permutation: `_mm256_permute4x64_epi64`
 - XOR operations: `_mm256_xor_si256`
 
-### 4.2 Adaptive Parallel Engine (`src/parallel.rs`)
-For input buffers exceeding $256\text{ KB}$ (`MIN_PARALLEL_CHUNK`):
-1. Reads host core count via `std::thread::available_parallelism()`.
-2. Computes ideal chunk size $C_\text{size} = \text{max}(256\text{ KB}, \text{data.len()} / \text{cores})$, aligned up to 512-byte block boundaries.
-3. Spawns threads inside `std::thread::scope` with counter offset calculated via `offset_counter(&mut chunk_iv, blocks_offset)`.
-4. Outputs results directly into pre-allocated memory slices without lock contention.
+### 4.3 ARM 64-bit NEON SIMD Acceleration (`src/neon.rs`)
+On ARM 64-bit `aarch64` CPUs supporting NEON SIMD, NQV loads **2 counter blocks (64 bytes total)** across 4 128-bit `uint64x2_t` registers ($V_0 \dots V_3$) per iteration:
+- 128-bit SIMD additions: `vaddq_u64`
+- 128-bit SIMD XOR operations: `veorq_u64`
+- Vector loads/stores: `vld1q_u64` / `vst1q_u64`
+
+---
+
+## 5. NQV-AEAD Construction & QVM-MAC Algorithm (`src/aead.rs`)
+
+**NQV-AEAD** provides Authenticated Encryption with Associated Data by combining NQV CTR stream encryption with **Quasigroup Vector MAC (QVM-MAC)**:
+
+```text
+Associated Data (AAD) ──┐
+                        ├─► QVM-MAC Accumulator ──► 16-Byte Tag
+Ciphertext ─────────────┤
+Length Block ───────────┘
+```
+
+1. **MAC Accumulator**: Initialized with IV XORed with NUMS constants ($C_\pi, C_e, C_{\sqrt{2}}, C_{\sqrt{3}}$).
+2. **Block Absorption**: Absorbs 32-byte blocks of AAD and Ciphertext, applying round key schedule rotation.
+3. **Length Framing**: Appends encoded $LEN(\text{AAD}) \parallel LEN(\text{Ciphertext})$ block.
+4. **Finalization Squeeze**: Applies $R$ non-linear QVM rounds and squeezes a 16-byte authentication tag.
+5. **Constant-Time Verification**: `open_aead` verifies tag equality using 16-byte constant-time XOR reduction prior to returning decrypted plaintext.

@@ -81,10 +81,28 @@ To run unit tests, doctests, and scalar/AVX2 parity checks:
 cargo test
 ```
 
-To run the benchmark suite (`benches/nqv_benchmark.rs`):
+To run the performance benchmark suite (`benches/nqv_benchmark.rs`):
 
 ```bash
-cargo run --release
+cargo bench --bench nqv_benchmark
+```
+
+To run the full NIST SP 800-22 statistical test suite (`benches/nist_sp800_22.rs`):
+
+```bash
+cargo bench --bench nist_sp800_22
+```
+
+To run the cryptanalytic evaluation suite (`benches/cryptanalysis.rs`):
+
+```bash
+cargo bench --bench cryptanalysis
+```
+
+To run the formal constant-time side-channel verification (`benches/constant_time.rs`):
+
+```bash
+cargo bench --bench constant_time
 ```
 
 To generate local HTML API documentation:

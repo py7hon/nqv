@@ -35,13 +35,16 @@
 
 #![deny(missing_docs)]
 
+pub mod aead;
 pub mod cipher;
 pub mod constants;
 pub mod counter;
+pub mod neon;
 pub mod parallel;
 pub mod scalar;
 pub mod simd;
 
+pub use aead::NqvAeadError;
 pub use cipher::{Nqv, NQV};
 pub use constants::*;
 pub use counter::{advance_counter, offset_counter};
@@ -80,6 +83,53 @@ mod tests {
         let pt = cipher.stream_transform_parallel(&ct, &iv);
 
         assert_eq!(data.as_slice(), pt.as_slice());
+    }
+
+    #[test]
+    fn test_aead_roundtrip() {
+        let key = [0x99u8; 32];
+        let iv = [0x88u8; 32];
+        let cipher = Nqv::new(&key, 8);
+
+        let plaintext = b"Sensitive Payload Protected by NQV-AEAD Construction";
+        let aad = b"header_metadata_v1";
+
+        let (ct, tag) = cipher.seal_aead(plaintext, aad, &iv);
+        let decrypted = cipher.open_aead(&ct, &tag, aad, &iv).expect("AEAD verification failed");
+
+        assert_eq!(plaintext.as_slice(), decrypted.as_slice());
+    }
+
+    #[test]
+    fn test_aead_tampered_ciphertext_fails() {
+        let key = [0x99u8; 32];
+        let iv = [0x88u8; 32];
+        let cipher = Nqv::new(&key, 8);
+
+        let plaintext = b"Sensitive Payload";
+        let aad = b"header_metadata";
+
+        let (mut ct, tag) = cipher.seal_aead(plaintext, aad, &iv);
+        ct[0] ^= 1; // Tamper 1 bit of ciphertext
+
+        let result = cipher.open_aead(&ct, &tag, aad, &iv);
+        assert_eq!(result, Err(NqvAeadError::Unauthenticated));
+    }
+
+    #[test]
+    fn test_aead_tampered_aad_fails() {
+        let key = [0x99u8; 32];
+        let iv = [0x88u8; 32];
+        let cipher = Nqv::new(&key, 8);
+
+        let plaintext = b"Sensitive Payload";
+        let aad = b"header_metadata";
+        let tampered_aad = b"header_metadata_tampered";
+
+        let (ct, tag) = cipher.seal_aead(plaintext, aad, &iv);
+
+        let result = cipher.open_aead(&ct, &tag, tampered_aad, &iv);
+        assert_eq!(result, Err(NqvAeadError::Unauthenticated));
     }
 
     #[test]

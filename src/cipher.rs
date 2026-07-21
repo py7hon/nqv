@@ -76,6 +76,11 @@ impl Nqv {
                 return unsafe { self.stream_transform_avx2(data, iv) };
             }
         }
+        #[cfg(target_arch = "aarch64")]
+        {
+            return unsafe { self.stream_transform_neon(data, iv) };
+        }
+        #[allow(unreachable_code)]
         self.stream_transform_scalar(data, iv)
     }
 }

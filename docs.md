@@ -11,9 +11,11 @@ The `nqv` library crate is structured into sub-modules separating responsibiliti
 
 ```text
 nqv (crate root)
+├── aead       ── NQV-AEAD seal_aead and open_aead authenticated encryption
 ├── cipher     ── Struct Nqv definition, constructor, and single-thread dispatcher
 ├── constants  ── NUMS mathematical constants and execution thresholds
 ├── counter    ── 256-bit big-endian counter arithmetic helpers
+├── neon       ── Hardware-accelerated ARM 64-bit NEON SIMD intrinsics
 ├── parallel   ── Adaptive multi-core parallel dispatch engine
 ├── scalar     ── Pure scalar fallback and in-place block permutation
 └── simd       ── Hardware-accelerated 256-bit AVX2 SIMD intrinsics
@@ -84,6 +86,18 @@ Direct hardware-accelerated 256-bit AVX2 SIMD transformation path.
 
 #### `Nqv::stream_transform_scalar(&self, data: &[u8], iv: &[u8; 32]) -> Vec<u8>`
 Pure scalar fallback mode processing 16 blocks (512 bytes) per iteration using 64-bit integer ALU instructions.
+
+---
+
+---
+
+#### `Nqv::seal_aead(&self, plaintext: &[u8], aad: &[u8], iv: &[u8; 32]) -> (Vec<u8>, [u8; 16])`
+Encrypted payload and authenticates Associated Data (AAD) using Quasigroup Vector MAC (QVM-MAC). Returns `(ciphertext, 16-byte authentication tag)`.
+
+---
+
+#### `Nqv::open_aead(&self, ciphertext: &[u8], tag: &[u8; 16], aad: &[u8], iv: &[u8; 32]) -> Result<Vec<u8>, NqvAeadError>`
+Verifies authentication tag in constant time. Returns decrypted plaintext vector if valid, or `Err(NqvAeadError::Unauthenticated)` if tampered.
 
 ---
 

@@ -1,11 +1,11 @@
 [package]
 name = "nqv"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 authors = ["Muhammad Iqbal Rifai <https://github.com/py7hon>"]
 description = "NQV: A hardware-accelerated (AVX2), high-throughput Quasigroup Vector cipher implementation in pure Rust."
 readme = "README.md"
-repository = "https://github.com/py7hon"
+repository = "https://github.com/py7hon/nqv.git"
 license = "Apache-2.0"
 keywords = ["cryptography", "avx2", "quasigroup", "encryption", "simd"]
 categories = ["cryptography", "algorithms"]
@@ -15,9 +15,25 @@ autobenches = false
 name = "nqv"
 path = "src/lib.rs"
 
-[[bin]]
-name = "nqv-benchmark"
+[[bench]]
+name = "nqv_benchmark"
 path = "benches/nqv_benchmark.rs"
+harness = false
+
+[[bench]]
+name = "nist_sp800_22"
+path = "benches/nist_sp800_22.rs"
+harness = false
+
+[[bench]]
+name = "cryptanalysis"
+path = "benches/cryptanalysis.rs"
+harness = false
+
+[[bench]]
+name = "constant_time"
+path = "benches/constant_time.rs"
+harness = false
 
 [dependencies]
 # Zero external dependencies for core NQV library

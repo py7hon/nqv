@@ -509,6 +509,48 @@ fn run_v4_comparison() {
     println!("instruction-level/SIMD parallelism, not a cryptographic security claim.\n");
 }
 
+// ---------- 5. AEAD throughput ----------
+
+fn run_aead_benchmark() {
+    println!("=== 5. NQV-AEAD THROUGHPUT BENCHMARK ===");
+    println!("Evaluates Authenticated Encryption (seal_aead) & Decryption (open_aead)");
+    println!("Payload Size: 8 MB | Associated Data (AAD): 64 bytes\n");
+
+    let size = 8 * 1024 * 1024usize;
+    let plaintext = random_bytes(size);
+    let aad = random_bytes(64);
+    let (cipher, iv) = nqv_setup(8);
+
+    let seal_secs = best_of(5, || {
+        let t = Instant::now();
+        let (ct, tag) = cipher.seal_aead(&plaintext, &aad, &iv);
+        let s = t.elapsed().as_secs_f64();
+        std::hint::black_box((ct, tag));
+        s
+    });
+
+    let (ct, tag) = cipher.seal_aead(&plaintext, &aad, &iv);
+
+    let open_secs = best_of(5, || {
+        let t = Instant::now();
+        let pt = cipher.open_aead(&ct, &tag, &aad, &iv).unwrap();
+        let s = t.elapsed().as_secs_f64();
+        std::hint::black_box(pt);
+        s
+    });
+
+    println!(
+        "{:<28} {:>16.2} MB/s",
+        "NQV-AEAD Seal (Encrypt + MAC)",
+        fmt_mbps(size, seal_secs)
+    );
+    println!(
+        "{:<28} {:>16.2} MB/s\n",
+        "NQV-AEAD Open (Verify + Decrypt)",
+        fmt_mbps(size, open_secs)
+    );
+}
+
 fn main() {
     println!("NQV Benchmark Suite (NQV vs AES-256-GCM vs ChaCha20-Poly1305)");
     println!("Zero external dependencies in NQV library crate itself.");
@@ -524,4 +566,5 @@ fn main() {
     run_avalanche_test();
     run_randomness_test();
     run_v4_comparison();
+    run_aead_benchmark();
 }
